@@ -1,0 +1,128 @@
+#!/bin/python3
+import socket
+import tkinter as tk
+from tkinter import *
+import tkinter.ttk as ttk
+from tkinter.ttk import *
+from ttkthemes import ThemedTk
+import tkinter.scrolledtext as ST
+from tkinter import messagebox
+import threading
+
+ERROR = ""
+
+def disable_component( name ):
+	name.state(['disabled'])
+def enable_component( name ):
+	name.state(['!disabled'])
+
+def disonnect():
+	global s
+	enable_component( host_label )
+	enable_component( host_entry )
+	enable_component( port_label )
+	enable_component( port_entry )
+	enable_component( btn )
+	frm.pack_forget()
+	tabs.forget(frm)
+	info.set("To connect, write the host address & port number")
+	testlbl.set("Button working but the may not have conected to server")
+	s.close()
+	s = None
+
+def clicked():
+
+	disable_component( host_entry )
+	disable_component( host_label )
+	disable_component( port_entry )
+	disable_component( port_label )
+	disable_component( btn )
+	tabs.add( frm , text="Server Connection" )
+
+	def socketsrv():
+		print("socketsrv()")
+		global s
+		if s == None:
+			s = socket.socket( socket.AF_INET , socket.SOCK_STREAM )
+		HOST = host.get()
+		PORT = port.get()
+		
+		try:
+			s.connect( ( HOST , int(PORT) ) )	
+			print("Connection --> OK")
+			info.set("You are connected !")
+			print("while loop, gonin in ")
+			
+			print('\nGetting header:')
+			srvMsg = s.recv(2048)
+			testlbl.set( srvMsg.decode("utf-8") )
+			print( srvMsg.decode("utf-8") )
+				
+		except Exception as e:
+			print(e)
+			ERROR = e
+			testlbl.set( ERROR ) 
+			messagebox.showinfo("Error",e)
+		except socket.error as se:
+			print(se)
+			ERROR = e
+			testlbl.set( ERROR )
+			messagebox.showinfo("Error",se)
+		except KeyboardInterrupt:
+			print('\nClient Stoped')
+			 
+	#thrd = threading.Thread( target=socketsrv )
+	socketsrv()
+	
+WIDTH=900
+HEIGHT=500
+
+s = socket.socket( socket.AF_INET , socket.SOCK_STREAM )
+
+window = ThemedTk()
+style = ttk.Style().theme_use('breeze')
+window.geometry( str(WIDTH)+"x"+str(HEIGHT+30) )
+window.title("Client GUI")
+
+tabs = ttk.Notebook( window , width=WIDTH , height=HEIGHT) # tab panes
+
+main_frame = ttk.Frame( tabs , width=WIDTH , height=HEIGHT )
+
+# frame 2
+frm = ttk.Frame( tabs , width=WIDTH , height=HEIGHT )
+testlbl = tk.StringVar()
+testlbl.set("Working")
+lbl = ttk.Label( frm , textvariable=testlbl )
+lbl.pack( pady=30 )
+stop_btn = ttk.Button( frm , text="Disconnect" , command=disonnect)
+stop_btn.pack()
+#end of frame 2
+
+host = tk.StringVar()
+host_label = ttk.Label( main_frame , text="\n\n\nHostname" )
+host_label.pack() # place(x=10 , y=15)
+host_entry = ttk.Entry( main_frame , textvariable=host , width=35 )
+host_entry.pack() # place( x=10 , y=30 )
+
+port = tk.StringVar()
+port_label = ttk.Label( main_frame , text="\nPort Number" )
+port_label.pack() # place(x=10 , y=15)
+port_entry = ttk.Entry( main_frame , textvariable=port , width=35 )
+port_entry.pack() # place( x=10 , y=30 )
+
+btn = ttk.Button( main_frame , text="\nConnect\n" , width=33 , command=clicked )
+btn.pack( pady=15 )
+#dicsonnect_btn = ttk.Button( frame , text="Disconnect" , command=close_server , width=21 ).place(x=202 , y=120)
+
+info = tk.StringVar()
+info.set("To connect, write the host address & port number")
+info_label = ttk.Label( main_frame , textvariable=info )
+info_label.pack( pady=15 )
+
+main_frame.pack()
+
+tabs.add( main_frame , text="  Connection  " )
+tabs.pack()
+print('Assets loaded!\n[ OK ]')
+window.mainloop()
+s.close()
