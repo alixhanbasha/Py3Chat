@@ -1,4 +1,8 @@
 #!/bin/python3
+'''
+	Python script to connect to a server, from a port w/ gui
+	Not finished !
+'''
 import socket
 import tkinter as tk
 from tkinter import *
