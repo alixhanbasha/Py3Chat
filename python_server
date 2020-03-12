@@ -1,4 +1,10 @@
 #!/bin/python3
+
+'''
+	Python script to initialize/open a localhost server w/ gui
+	Not finished !
+'''
+
 import socket
 import sys
 import tkinter as tk
