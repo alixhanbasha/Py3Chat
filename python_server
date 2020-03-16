@@ -1,128 +1,111 @@
 #!/bin/python3
-
 '''
-	Python script to initialize/open a localhost server w/ gui
-	Not finished !
-'''
+	Multithread server writen in python 3
 
+	It has a "create_tcp_server" function that takes a host and a port. This creates a server and also handles the thread logic.
+	Another function is "launch", which is the client handler. This gets called in a new thread everytime a new connection is made
+	The final function is "brodcast_msg", and all this does is send a message to evey client in the server
+	
+	Clients are put in a list. This is done so it is easy to call the last client on the list to a new thread.
+	So, when a new connection is established, take that connection and append it to the list. Then take the last element of the list,
+	pass it to the "launch" method through a new thread and boom!. You have a thread for each client on the server.
+'''
 import socket
-import sys
-import tkinter as tk
-from tkinter import *
-from tkinter import messagebox , filedialog
-import tkinter.scrolledtext as ST
-import tkinter.ttk as ttk
-from ttkthemes import ThemedTk
 import threading
-from time import sleep
-import datetime as dt
 
-WIDTH = 800
-HEIGHT = 400
-running_socket = False
+clients = []
+client_side_keywords = [ "{clear}" ] # commnds that are for the client side will be ignored
 
-def server():
-	global running_socket
+def brodcast_msg( msg ):
+	for c in range( 0 , len(clients) ):
+			clients[c][0].send( bytes( msg.encode("utf-8") )  )
 
-	HOST = host.get()
-	PORT = port.get()
+def launch( client , address , name ):
+	global clients
+	server_welcome_message = f"========================\n Welcome to '{socket.gethostname()}' server\n========================\n\n"
 	
-	if( HOST == "" ) or ( PORT == "" ):
-		ta.insert('insert','   Hostname & Portnumber not given so using default values.\nlocalhost @ 8888')
-		HOST = "localhost"
-		PORT = 8888
-		
-	if( running_socket == True ):
-		ta.insert('insert','\n   A connection is already in progress\n')
-		return	
-	running_socket = True
-	
-	sct = socket.socket( socket.AF_INET , socket.SOCK_STREAM )	
+	print(f"\033[0;32mClient --[{name}@{address[0]}]-- connected\033[0m")
+	client.send( bytes( server_welcome_message.encode("utf-8")) )
+	brodcast_msg(f"Client --[{name}@{address[0]}]-- connected")
+
 	try:
-		ta.delete( 0.0 , END )
-		ta.insert( 'insert' , f'\n   Creating socket for --[ {HOST} ]--\n   Opening port --[ {PORT} ]--\n' )
-		print( f'Creating socket @[ {HOST} ]\nOpening port [ {PORT} ]\n' )
-		sct.bind( ( str(HOST) , int(PORT) ) )
+		while True:
+			
+			data = client.recv(2048).decode("utf-8")
+			
+			if data:
+				
+				if data == "{users}":
+					hdr = "="*15
+					client.sendall( bytes("===============\nServer:: '{users}' ".encode("utf-8") ) )
+					fullmsg = ""
+					for i in range(0 , len(clients)):
+						fullmsg = fullmsg + "\t" +str(clients[i][2]) + "\n"
+						
+					client.sendall( bytes( f"\nList of connected users[\n{fullmsg}\n]\n{hdr}".encode("utf-8") ) )
+					print(f"Server command --[{data}]-- was called by {name}")
+					
+				
+				elif data == "{users} -num":
+					msg = f"Number of users at the moment: {str( len(clients) )}"
+					client.sendall( bytes( msg.encode("utf-8") ) )
+					print(f"Server command --[{data}]-- was called by {name}")
+					
+					
+				elif data == "{exit} ":
+					brodcast_msg(f"Server:: {name} has been disconnected")
+					clients.remove( ( client , address , name ) )
+					client.close()
+				
+				elif data == "{server_welcome_message}":
+					msg = server_welcome_message
+					client.sendall( bytes( msg.encode("utf-8") ) )
+					print(f"Server command --[{data}]-- was called by {name}")
+					
+				elif data in client_side_keywords:
+					continue
+					
+				else:
+					print(f"{name}@{address[0]} sent: --[{data}]--")
+					data = "<" + str(name) + "> " + str(data)
+					#client.sendall( bytes( data.encode("utf-8") ) )
+					brodcast_msg( data )	
+					
+			else: # activates when a client disconnects !
+				break
+	finally:
+		print(f"\033[0;33mClient [{name}@{address[0]}] disconnected !\033[0m")
+		brodcast_msg(f"Client [{name}@{address[0]}] disconnected !")
+		clients.remove( ( client , address , name ) )
+		client.close()
+
+
+
+
+def create_tcp_server( HOST , PORT):
+	global clients
+	sock = socket.socket( socket.AF_INET , socket.SOCK_STREAM ) #socket obj
+	try:
+		sock.bind( ( HOST , PORT ) )
+		sock.listen( 10 )
+		print(f'Created socket -> [{HOST}@{PORT}]\n\n')
+		while True:
+			client , address = sock.accept()
+			name = client.recv(64).decode("utf-8")
+			clients.append( ( client , address , name ) ) # add incomming connections to a list
+			thrd = threading.Thread( target=launch , args=( clients[-1] ) ) # take the last connection from the list & handle it on a new thread
+			thrd.start()
+					
+	except socket.error as se:
+		print(f"\n\n\033[1;31mCould not open socket --> {se}\033[0m\n\n")
+		sock.close()
 		
-	except socket.error as err_msg:
-		running_socket = False
-		ta.insert( 'insert' , f'\n\n   [ ✕ ] Server binding/creation error\n   {err_msg}\n' )
-		print( f'\n\n   [ ✕ ] Server binding/creation error\n   {err_msg}\n' )
-		sys.exit()
-
-	ta.insert( 'insert' , '\n   [ i ] SocketOpen -> [ ✓ ]\n   [ i ] PortOpen -> [ ✓ ]\n' )
-	sct.listen(2048)
-	ta.insert( 'insert' , '   [ i ] Listening...\n\n' )
-
-	while True:
-		conn , address = sct.accept()
-		ta.insert( 'insert' , '   [ i ] Connection established\n        from '+str(address)+' at [ ' + str(dt.datetime.now())+'] \n\n' )
-		conn.send( bytes( "\nKonektimi ne server eshte i sukseshem\nMireseerdhe :)\n".encode("utf-8") ) )
-		for i in range(0,5):
-			conn.send( bytes( "\nData\n".encode("utf-8") ) )
-			sleep(100)
-	
-	sct.close()
-	print('Socket closed')
-
-def init_server():
-	ta.delete( 0.0 , END )
-	thrd = threading.Thread(target=server)
-	thrd.daemon = True
-	thrd.start()
-	
-def close_server():
-	global running_socket
-	running_socket = False
-
-# Code initialisation
-try:	
-	
-	bg = "#1d1d1d"
-	fg = "white"	
-	
-	window = ThemedTk()
-	window.title("Server Information")
-	window.geometry( str(WIDTH)+"x"+str(HEIGHT+30) )
-	window.grid()
-	
-	style = ttk.Style()
-	style.theme_use('breeze') # arc , radiance , black , breeze , equilux
-	# style.configure( 'BW.TFrame' , foreground=fg, background=bg )
-	
-	tabs = ttk.Notebook(window)
-	
-	frame = ttk.Frame( tabs , width=WIDTH , height=HEIGHT ) #, style="BW.TFrame"
-	frame2 = ttk.Frame( tabs , width=WIDTH , height=HEIGHT )
-	info = ttk.Label( frame2 , text="\n\nMore information comming soon !" ).pack()
-	
-	host = tk.StringVar()
-	port = tk.StringVar()
-	
-	host_label = ttk.Label( frame , text="Hostname" ).place(x=10,y=15)
-	host_entry = ttk.Entry( frame , width=50 , textvariable=host ).place(x=10 , y=30)
-	
-	port_label = ttk.Label( frame , text="Port number" ).place(x=10,y=65)
-	port_entry = ttk.Entry( frame , width=50 , textvariable=port ).place(x=10 , y=80)
-	
-	btn = ttk.Button( frame , text="\nStart Server\n" , command=init_server , width=21 ).place(x=11 , y=120)
-	dicsonnect_btn = ttk.Button( frame , text="\nDisconnect\n" , command=close_server , width=21 ).place(x=202 , y=120)
-
-	ta = ST.ScrolledText( frame , bg="white" , fg="black" , width=56 , height=28 )
-	ta.insert('insert','\n   Insert host and port number\n   To start the server, click the "Start Server" button\n')
-	ta.place(x=WIDTH/2-27,y=0)
-	frame.pack()
-	
-	tabs.add(frame , text="Server")
-	tabs.add(frame2 , text="More")
-	tabs.pack()
-	
-	window.mainloop()
-
-except Exception as e:
-	print(e)
-except KeyboardInterrupt as ke:
-	messagebox.showinfo("Program information","Program stoped by user by KeyboardInterrupt")
-	window.destroy()
-	print("Stoped script")
-	sys.exit()
+	except Exception as e:
+		print(f"\033[1;31mAn exceprion occured:\n{e}\033[0m")
+		sock.close()
+		
+	except KeyboardInterrupt:
+		print("\n====================\nForcebly stopped by user\n====================\n")
+		sock.close() 
+		
+create_tcp_server( 'localhost' , 65534 )
