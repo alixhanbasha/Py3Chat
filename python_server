@@ -1,30 +1,37 @@
 #!/bin/python3
 '''
 	<lastEdited="17.03.2020" />
-	Multithread server writen in python 3
+	
+	DESCRIPTION
+		Multithread server writen in python 3
 
-	It has a "create_tcp_server" function that takes a host and a port. This creates a server and also handles the thread logic.
-	Another function is "launch", which is the client handler. This gets called in a new thread everytime a new connection is made
-	The final function is "brodcast_msg", and all this does is send a message to evey client in the server
+		It has a "create_tcp_server" function that takes a host and a port. This creates a server and also handles the thread logic.
+		Another function is "launch", which is the client handler. This gets called in a new thread everytime a new connection is made
+		The final function is "brodcast_msg", and all this does is send a message to evey client in the server
 
-	Clients are put in a list. This is done so it is easy to call the last client on the list to a new thread.
-	So, when a new connection is established, take that connection and append it to the list. Then take the last element of the list,
-	pass it to the "launch" method through a new thread and boom!. You have a thread for each client on the server.
+		Clients are put in a list. This is done so it is easy to call the last client on the list to a new thread.
+		So, when a new connection is established, take that connection and append it to the list. Then take the last element of the list,
+		pass it to the "launch" method through a new thread and boom!. You have a thread for each client on the server.
+	
+	CHANGES
+		[1] Fixed a few bugs
+		[2] Made code more readable
+		[3] Tweaked the help section
 '''
 import socket
 import threading
 
 clients = []
-client_side_keywords = [ "[clear]" , "[s:breeze]" , "[s:equilux]" , "[s:blue]" , "[s:black]" , "[s:arc]"] # commnds that are for the client side will be ignored
+client_side_keywords = [ "[clear]" , "[style]"] # commnds that are for the client side will be ignored
 
 
 def brodcast_msg( msg ):
 	for c in range( 0 , len(clients) ):
 			clients[c][0].send( bytes( msg.encode("utf-8") )  )
-
+# ------------------------------------------------------------------------------------------------------------------
 def launch( client , address , name ):
 	global clients
-	server_welcome_message = f"========================\n Welcome to '{socket.gethostname()}' server\n========================\nType [help] for info\n\n"
+	server_welcome_message = f"================================\n Welcome to '{socket.gethostname()}' server\n================================\nType [help] for info\n\n"
 	# Server commands implementacion
 	def user_info( *args ):
 		if len(args) < 1:
@@ -59,7 +66,7 @@ def launch( client , address , name ):
 		clients.remove( ( client , address , name ) )
 		client.close()
 
-	def general_function( *args ): # a function to parse simple stuff, in order to not make millions of functions
+	def general_function( *args ): # a function to parse simple stuff, in order to not make millions of other functions
 		if args[0] == "welcomeMessage":
 			msg = "Server:: '[server_welcome_message]':\n" + str(server_welcome_message)
 			client.sendall( bytes( msg.encode("utf-8") ) )
@@ -81,31 +88,29 @@ def launch( client , address , name ):
 	def printHelp():
 		help = '''
 +--------------------------------------------------------------------------------------------------------+
-| == Server commands ==                                                                                  
-|   * [users] --> Shows users connected to the server, optional argument is -n
-|   * [whoami] --> Shows your username
-|   * [server_welcome_message] --> Shows the server welcome message                                      
-|   * [help] --> Shows this help text                                                                    
-|   * [exit] --> Disconnect from the server                                                              
+| == Server commands ==                                                                                  |
+|   * [users] --> Shows users connected to the server, optional arguments [ -n , -i ]                    |
+|   * [whoami] --> Shows your username                                                                   |
+|   * [server_welcome_message] --> Shows the server welcome message                                      |
+|   * [help] --> Shows this help text                                                                    |
+|   * [exit] --> Disconnect from the server                                                              |
+|   * [clear] --> Clear the screen                                                                       |
 +--------------------------------------------------------------------------------------------------------+
-|                                                                                                        
-| == Usage/Clarification ==
-|
+|                                                                                                        |
+| == Usage/Clarification ==                                                                              |
+|     Ktu duhet me shtu perdorimin edhe naj info tjeter per programin                                    |
+|                                                                                                        |
 +--------------------------------------------------------------------------------------------------------+      
-|                                                                                                        
-| == Styles ==
-|    * [s:breeze] --> Default style for the client
-|    * [s:equilux] --> Dark mode
-|    * [s:blue] --> WindowsXP look
-|    * [s:black] --> Night mode
-|    * [s:arc] --> Simple modern look
-|
+|                                                                                                        |
+| == Client commands ==                                                                                  |
+|    * [style] --> Allows to change the theme of the program, [style] -help for more details             |
+|                                                                                                        |
 +--------------------------------------------------------------------------------------------------------+
 		'''
 		client.sendall( bytes( help.encode("utf-8") ) )
 		print(f"Server command --[{data}]-- was called by {name}")
 
-	server_commands = {
+	server_commands = { # defining a dictionary for the upper deffined functions !
 		'[users]':user_info,
 		'[exit]':srv_exit_byMsg,
 		'[server_welcome_message]':general_function,
@@ -117,7 +122,7 @@ def launch( client , address , name ):
 
 	print(f"\033[0;32mClient --[{name}@{address[0]}]-- connected\033[0m")
 	client.send( bytes( server_welcome_message.encode("utf-8")) )
-	brodcast_msg(f"Client --[ {name} @ {address[0]} ]-- connected")
+	brodcast_msg(f"--[ {name} @ {address[0]} ]-- joined the chat")
 
 	try:
 		print("Running")
@@ -145,10 +150,10 @@ def launch( client , address , name ):
 
 				elif command[0] == "[say]":
 					server_commands['[say]']('say' , command[1:] )
-
-				elif data in client_side_keywords:
+				
+				elif command[0] in client_side_keywords:
 					continue
-
+				
 				else:
 					print(f"{name}@{address[0]} sent: --[{data}]--")
 					data = "< " + str(name) + " >: " + str(data)
@@ -158,11 +163,10 @@ def launch( client , address , name ):
 				break
 	finally:
 		print(f"\033[0;33mClient [{name}@{address[0]}] disconnected !\033[0m")
-		brodcast_msg(f"Client [{name}@{address[0]}] disconnected !")
+		brodcast_msg(f"[{name}@{address[0]}] left the chat !")
 		clients.remove( ( client , address , name ) )
 		client.close()
-
-
+# ------------------------------------------------------------------------------------------------------------------
 def create_tcp_server( HOST , PORT):
 	global clients
 	sock = socket.socket( socket.AF_INET , socket.SOCK_STREAM ) #socket obj
