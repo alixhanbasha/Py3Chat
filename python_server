@@ -5,7 +5,7 @@
 	It has a "create_tcp_server" function that takes a host and a port. This creates a server and also handles the thread logic.
 	Another function is "launch", which is the client handler. This gets called in a new thread everytime a new connection is made
 	The final function is "brodcast_msg", and all this does is send a message to evey client in the server
-	
+
 	Clients are put in a list. This is done so it is easy to call the last client on the list to a new thread.
 	So, when a new connection is established, take that connection and append it to the list. Then take the last element of the list,
 	pass it to the "launch" method through a new thread and boom!. You have a thread for each client on the server.
@@ -16,6 +16,7 @@ import threading
 clients = []
 client_side_keywords = [ "{clear}" ] # commnds that are for the client side will be ignored
 
+
 def brodcast_msg( msg ):
 	for c in range( 0 , len(clients) ):
 			clients[c][0].send( bytes( msg.encode("utf-8") )  )
@@ -23,54 +24,115 @@ def brodcast_msg( msg ):
 def launch( client , address , name ):
 	global clients
 	server_welcome_message = f"========================\n Welcome to '{socket.gethostname()}' server\n========================\n\n"
-	
+	# Server commands implementacion
+	def user_info( *args ):
+		if len(args) < 1:
+			hdr = "="*15
+			client.sendall( bytes("===============\nServer:: '{users}' ".encode("utf-8") ) )
+			fullmsg = ""
+			for i in range(0 , len(clients)):
+				fullmsg = fullmsg + "\t" +str(clients[i][2]) + "\n"
+
+			client.sendall( bytes( f"\nList of connected users[\n{fullmsg}\n]\n{hdr}".encode("utf-8") ) )
+			print(f"Server command --[{data}]-- was called by {name}")
+
+		elif len(args) == 1:
+			if args[0] == "-n":
+				msg = f"\nServer:: Number of users at the moment: -- {str( len(clients) )} --\n"
+				client.sendall( bytes( msg.encode("utf-8") ) )
+				print(f"Server command --[{data}]-- was called by {name}")
+			else:
+				msg = f"\nServer:: users {args[0]} argument not understood \n"
+				client.sendall( bytes( msg.encode("utf-8") ) )
+				print(f"Server command --[{data}]-- was called by {name}")
+
+	def srv_exit_byMsg():
+		brodcast_msg(f"Server:: {name} has been disconnected")
+		clients.remove( ( client , address , name ) )
+		client.close()
+
+	def general_function( *args ): # a function to parse simple stuff, in order to not make millions of functions
+		if args[0] == "welcomeMessage":
+			msg = "Server:: '{server_welcome_message}': " + str(server_welcome_message)
+			client.sendall( bytes( msg.encode("utf-8") ) )
+			print(f"Server command --[{data}]-- was called by {name}")
+
+		elif args[0] == "whoami":
+			msg = "Server:: '{whoami}': " + str(name)
+			client.sendall( bytes( msg.encode("utf-8") ) )
+			print(f"Server command --[{data}]-- was called by {name}")
+
+		elif (args[0] == "say") and ( len(args) > 1 ):
+			msg = "Server:: '{say}': " + str( args[1:] )
+			client.sendall( bytes( msg.encode("utf-8") ) )
+			print(f"Server command --[{data}]-- was called by {name}")
+
+		else:
+			pass
+
+	def printHelp():
+		help = '''
+
+Server commands:
+	{users} --> Shows users connected to the server, optional argument is -n
+	{whoami} --> Shows your username
+	{server_welcome_message} --> Shows the server welcome message
+	{help} --> Shows this help text
+	{exit} --> Disconnect from the server
+
+		'''
+		client.sendall( bytes( help.encode("utf-8") ) )
+		print(f"Server command --[{data}]-- was called by {name}")
+
+	server_commands = {
+		'{users}':user_info,
+		'{exit}':srv_exit_byMsg,
+		'{server_welcome_message}':general_function,
+		'{whoami}':general_function,
+		'{say}':general_function,
+		'{help}':printHelp
+	}
+	# End of server commands
+
 	print(f"\033[0;32mClient --[{name}@{address[0]}]-- connected\033[0m")
 	client.send( bytes( server_welcome_message.encode("utf-8")) )
 	brodcast_msg(f"Client --[{name}@{address[0]}]-- connected")
 
 	try:
+		print("Running")
 		while True:
-			
 			data = client.recv(2048).decode("utf-8")
-			
+			command = data.split(" ")
 			if data:
-				
-				if data == "{users}":
-					hdr = "="*15
-					client.sendall( bytes("===============\nServer:: '{users}' ".encode("utf-8") ) )
-					fullmsg = ""
-					for i in range(0 , len(clients)):
-						fullmsg = fullmsg + "\t" +str(clients[i][2]) + "\n"
-						
-					client.sendall( bytes( f"\nList of connected users[\n{fullmsg}\n]\n{hdr}".encode("utf-8") ) )
-					print(f"Server command --[{data}]-- was called by {name}")
-					
-				
-				elif data == "{users} -num":
-					msg = f"Number of users at the moment: {str( len(clients) )}"
-					client.sendall( bytes( msg.encode("utf-8") ) )
-					print(f"Server command --[{data}]-- was called by {name}")
-					
-					
-				elif data == "{exit} ":
-					brodcast_msg(f"Server:: {name} has been disconnected")
-					clients.remove( ( client , address , name ) )
-					client.close()
-				
-				elif data == "{server_welcome_message}":
-					msg = server_welcome_message
-					client.sendall( bytes( msg.encode("utf-8") ) )
-					print(f"Server command --[{data}]-- was called by {name}")
-					
+				if command[0] == "{users}":
+					if len(command) == 2:
+						server_commands['{users}']( command[1] )
+					else:
+						server_commands['{users}']()
+
+				elif command[0] == "{exit}":
+					server_commands['{exit}']()
+
+				elif command[0] == "{help}":
+					server_commands['{help}']()
+
+				elif command[0] == "{server_welcome_message}":
+					server_commands['{server_welcome_message}']('welcomeMessage')
+
+				elif command[0] == "{whoami}":
+					server_commands['{whoami}']('whoami')
+
+				elif command[0] == "{say}":
+					server_commands['{say}']('say' , command[1:] )
+
 				elif data in client_side_keywords:
 					continue
-					
+
 				else:
 					print(f"{name}@{address[0]} sent: --[{data}]--")
 					data = "<" + str(name) + "> " + str(data)
-					#client.sendall( bytes( data.encode("utf-8") ) )
-					brodcast_msg( data )	
-					
+					brodcast_msg( data )
+
 			else: # activates when a client disconnects !
 				break
 	finally:
@@ -80,32 +142,30 @@ def launch( client , address , name ):
 		client.close()
 
 
-
-
 def create_tcp_server( HOST , PORT):
 	global clients
 	sock = socket.socket( socket.AF_INET , socket.SOCK_STREAM ) #socket obj
 	try:
 		sock.bind( ( HOST , PORT ) )
 		sock.listen( 10 )
-		print(f'Created socket -> [{HOST}@{PORT}]\n\n')
+		print(f'\nCreated socket -> [{HOST}@{PORT}]\n\n')
 		while True:
 			client , address = sock.accept()
 			name = client.recv(64).decode("utf-8")
 			clients.append( ( client , address , name ) ) # add incomming connections to a list
 			thrd = threading.Thread( target=launch , args=( clients[-1] ) ) # take the last connection from the list & handle it on a new thread
 			thrd.start()
-					
+
 	except socket.error as se:
 		print(f"\n\n\033[1;31mCould not open socket --> {se}\033[0m\n\n")
 		sock.close()
-		
+
 	except Exception as e:
 		print(f"\033[1;31mAn exceprion occured:\n{e}\033[0m")
 		sock.close()
-		
+
 	except KeyboardInterrupt:
 		print("\n====================\nForcebly stopped by user\n====================\n")
-		sock.close() 
-		
+		sock.close()
+
 create_tcp_server( 'localhost' , 65534 )
