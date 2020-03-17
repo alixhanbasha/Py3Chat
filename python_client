@@ -19,7 +19,9 @@ from tkinter import *
 from tkinter import messagebox , filedialog
 
 WIDTH = 1000
-HEIGHT = 500
+HEIGHT = 550
+
+default_style = "breeze"
 
 def disable_component( name ):
 	name.state(['disabled'])
@@ -101,20 +103,51 @@ def connect_btn_clicked():
 	thrd.start()
 
 def send( event = None ):
+	global style
 	msg = message.get()
 	message.set("")
 	sock.send( bytes( msg.encode("utf-8") ) )
-	if msg == "{exit}":
+	
+	if msg == "[exit]":
 		disonnect()
-	elif msg == "{clear}":
+	
+	elif msg == "[clear]":
 		ta.delete( 0.0 , END )
+	
+	elif msg == "[s:breeze]":
+		default_style = "breeze"
+		style.theme_use( default_style )
+		messagebox.showinfo("Information",f"Style was successfully changed  to {default_style}")
+		
+	elif msg == "[s:equilux]":
+		default_style = "equilux"
+		style.theme_use( default_style )
+		messagebox.showinfo("Information",f"Style was successfully changed  to {default_style}")
+	
+	elif msg == "[s:blue]":
+		default_style = "blue"
+		style.theme_use( default_style )
+		messagebox.showinfo("Information",f"Style was successfully changed  to {default_style}")
+	
+	elif msg == "[s:black]":
+		default_style = "black"
+		style.theme_use( default_style )
+		messagebox.showinfo("Information",f"Style was successfully changed  to {default_style}")
+		
+	elif msg == "[s:arc]":
+		default_style = "arc"
+		style.theme_use( default_style )
+		messagebox.showinfo("Information",f"Style was successfully changed  to {default_style}")
 
 if __name__ == "__main__":
 
 	sock = socket.socket( socket.AF_INET , socket.SOCK_STREAM  )
 
 	root = ThemedTk()
-	style = ttk.Style().theme_use("blue")
+	
+	style = ttk.Style()
+	style.theme_use( default_style )
+	
 	root.title("Client")
 	root.geometry( str(WIDTH) +"x"+ str(HEIGHT) )
 
@@ -132,15 +165,15 @@ if __name__ == "__main__":
 	lbl = ttk.Label( chat_frame , textvariable=srvMsg_label )
 	lbl.pack( pady=30 )
 
-	ta = st.ScrolledText( chat_frame , width=120 , height=30 , wrap=tk.WORD )
+	ta = st.ScrolledText( chat_frame , width=120 , height=30 , wrap=tk.WORD , font = "Calibri 11" , bg="#141d26" , fg="white" )
 	ta.place( x=0 , y=0 )
 
 	message = tk.StringVar()
 	message_entry = ttk.Entry( chat_frame , textvariable = message , width=120 )
-	message_entry.place( x=0 , y=440 )
+	message_entry.place( x=0 , y=470 )
 
 	send_btn = ttk.Button( chat_frame , text="  Send  " , command=send )
-	send_btn.place( x=870 , y=440)
+	send_btn.place( x=870 , y=470)
 
 	stop_btn = ttk.Button( chat_frame , text="\nDisconnect\n" , command=disonnect)
 	stop_btn.place( x=870 , y=10 )

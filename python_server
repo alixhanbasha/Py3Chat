@@ -15,7 +15,7 @@ import socket
 import threading
 
 clients = []
-client_side_keywords = [ "{clear}" ] # commnds that are for the client side will be ignored
+client_side_keywords = [ "[clear]" , "[s:breeze]" , "[s:equilux]" , "[s:blue]" , "[s:black]" , "[s:arc]"] # commnds that are for the client side will be ignored
 
 
 def brodcast_msg( msg ):
@@ -24,26 +24,33 @@ def brodcast_msg( msg ):
 
 def launch( client , address , name ):
 	global clients
-	server_welcome_message = f"========================\n Welcome to '{socket.gethostname()}' server\n========================\n\n"
+	server_welcome_message = f"========================\n Welcome to '{socket.gethostname()}' server\n========================\nType [help] for info\n\n"
 	# Server commands implementacion
 	def user_info( *args ):
 		if len(args) < 1:
-			hdr = "="*15
-			client.sendall( bytes("===============\nServer:: '{users}' ".encode("utf-8") ) )
 			fullmsg = ""
 			for i in range(0 , len(clients)):
 				fullmsg = fullmsg + "\t" +str(clients[i][2]) + "\n"
 
-			client.sendall( bytes( f"\nList of connected users[\n{fullmsg}\n]\n{hdr}".encode("utf-8") ) )
+			client.sendall( bytes( f"\nServer:: List of connected users[\n{fullmsg}\n]\n".encode("utf-8") ) )
 			print(f"Server command --[{data}]-- was called by {name}")
 
 		elif len(args) == 1:
+			
 			if args[0] == "-n":
 				msg = f"\nServer:: Number of users at the moment: -- {str( len(clients) )} --\n"
 				client.sendall( bytes( msg.encode("utf-8") ) )
 				print(f"Server command --[{data}]-- was called by {name}")
+			
+			elif args[0] == "-i":
+				fullmsg = ""
+				for c in clients:
+					fullmsg = fullmsg + "\t" +str(c) + "\n"
+				client.sendall( bytes( f"\nServer:: List of connected users[\n{fullmsg}\n]\n".encode("utf-8") ) )
+				print(f"Server command --[{data}]-- was called by {name}")
+			
 			else:
-				msg = f"\nServer:: users {args[0]} argument not understood \n"
+				msg = f"\nServer:: [users] {args[0]} argument not understood \n"
 				client.sendall( bytes( msg.encode("utf-8") ) )
 				print(f"Server command --[{data}]-- was called by {name}")
 
@@ -54,17 +61,17 @@ def launch( client , address , name ):
 
 	def general_function( *args ): # a function to parse simple stuff, in order to not make millions of functions
 		if args[0] == "welcomeMessage":
-			msg = "Server:: '{server_welcome_message}': " + str(server_welcome_message)
+			msg = "Server:: '[server_welcome_message]':\n" + str(server_welcome_message)
 			client.sendall( bytes( msg.encode("utf-8") ) )
 			print(f"Server command --[{data}]-- was called by {name}")
 
 		elif args[0] == "whoami":
-			msg = "Server:: '{whoami}': " + str(name)
+			msg = "Server:: '[whoami]': " + str(name)
 			client.sendall( bytes( msg.encode("utf-8") ) )
 			print(f"Server command --[{data}]-- was called by {name}")
 
 		elif (args[0] == "say") and ( len(args) > 1 ):
-			msg = "Server:: '{say}': " + str( args[1:] )
+			msg = "Server:: '[say]': " + str( args[1:] )
 			client.sendall( bytes( msg.encode("utf-8") ) )
 			print(f"Server command --[{data}]-- was called by {name}")
 
@@ -73,31 +80,44 @@ def launch( client , address , name ):
 
 	def printHelp():
 		help = '''
-
-Server commands:
-	{users} --> Shows users connected to the server, optional argument is -n
-	{whoami} --> Shows your username
-	{server_welcome_message} --> Shows the server welcome message
-	{help} --> Shows this help text
-	{exit} --> Disconnect from the server
-
++--------------------------------------------------------------------------------------------------------+
+| == Server commands ==                                                                                  
+|   * [users] --> Shows users connected to the server, optional argument is -n
+|   * [whoami] --> Shows your username
+|   * [server_welcome_message] --> Shows the server welcome message                                      
+|   * [help] --> Shows this help text                                                                    
+|   * [exit] --> Disconnect from the server                                                              
++--------------------------------------------------------------------------------------------------------+
+|                                                                                                        
+| == Usage/Clarification ==
+|
++--------------------------------------------------------------------------------------------------------+      
+|                                                                                                        
+| == Styles ==
+|    * [s:breeze] --> Default style for the client
+|    * [s:equilux] --> Dark mode
+|    * [s:blue] --> WindowsXP look
+|    * [s:black] --> Night mode
+|    * [s:arc] --> Simple modern look
+|
++--------------------------------------------------------------------------------------------------------+
 		'''
 		client.sendall( bytes( help.encode("utf-8") ) )
 		print(f"Server command --[{data}]-- was called by {name}")
 
 	server_commands = {
-		'{users}':user_info,
-		'{exit}':srv_exit_byMsg,
-		'{server_welcome_message}':general_function,
-		'{whoami}':general_function,
-		'{say}':general_function,
-		'{help}':printHelp
+		'[users]':user_info,
+		'[exit]':srv_exit_byMsg,
+		'[server_welcome_message]':general_function,
+		'[whoami]':general_function,
+		'[say]':general_function,
+		'[help]':printHelp
 	}
 	# End of server commands
 
 	print(f"\033[0;32mClient --[{name}@{address[0]}]-- connected\033[0m")
 	client.send( bytes( server_welcome_message.encode("utf-8")) )
-	brodcast_msg(f"Client --[{name}@{address[0]}]-- connected")
+	brodcast_msg(f"Client --[ {name} @ {address[0]} ]-- connected")
 
 	try:
 		print("Running")
@@ -105,33 +125,33 @@ Server commands:
 			data = client.recv(2048).decode("utf-8")
 			command = data.split(" ")
 			if data:
-				if command[0] == "{users}":
+				if command[0] == "[users]":
 					if len(command) == 2:
-						server_commands['{users}']( command[1] )
+						server_commands['[users]']( command[1] )
 					else:
-						server_commands['{users}']()
+						server_commands['[users]']()
 
-				elif command[0] == "{exit}":
-					server_commands['{exit}']()
+				elif command[0] == "[exit]":
+					server_commands['[exit]']()
 
-				elif command[0] == "{help}":
-					server_commands['{help}']()
+				elif command[0] == "[help]":
+					server_commands['[help]']()
 
-				elif command[0] == "{server_welcome_message}":
-					server_commands['{server_welcome_message}']('welcomeMessage')
+				elif command[0] == "[server_welcome_message]":
+					server_commands['[server_welcome_message]']('welcomeMessage')
 
-				elif command[0] == "{whoami}":
-					server_commands['{whoami}']('whoami')
+				elif command[0] == "[whoami]":
+					server_commands['[whoami]']('whoami')
 
-				elif command[0] == "{say}":
-					server_commands['{say}']('say' , command[1:] )
+				elif command[0] == "[say]":
+					server_commands['[say]']('say' , command[1:] )
 
 				elif data in client_side_keywords:
 					continue
 
 				else:
 					print(f"{name}@{address[0]} sent: --[{data}]--")
-					data = "<" + str(name) + "> " + str(data)
+					data = "< " + str(name) + " >: " + str(data)
 					brodcast_msg( data )
 
 			else: # activates when a client disconnects !
