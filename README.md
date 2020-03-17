@@ -1,4 +1,4 @@
-# projects
+# Py3Chat
 
 Client/Server chat created with python3.
 The server is multithreaded.
