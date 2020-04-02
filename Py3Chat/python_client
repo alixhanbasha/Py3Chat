@@ -1,0 +1,235 @@
+#!/bin/python3
+'''
+	## NOTE: Tested in linux
+	<lastEdited="2.04.2020" />
+	<author="Alixhan Basha" />
+	
+	CHANGES
+		[1] Added suport for theme changes
+		[2] Users can now pass connection info derectly from the terminal
+		[3] Minor changes here & there
+		[4] Made code more readable
+	
+	TODO
+		[1] Make the textbox read-only
+		[2] Beautify the gui
+		[3] Add more server & client commands
+		[4] Fix bugs
+'''
+import socket
+import sys
+import threading
+import tkinter as tk
+import tkinter.ttk as ttk
+from tkinter.ttk import *
+import tkinter.scrolledtext as st
+from ttkthemes import ThemedTk
+from tkinter import *
+from tkinter import messagebox , filedialog
+
+import sys
+
+WIDTH = 1000
+HEIGHT = 550
+
+default_style = "breeze"
+
+def disable_component( name ):
+	name.state(['disabled'])
+def enable_component( name ):
+	name.state(['!disabled'])
+# ------------------------------------------------------------------------------------------------------------------
+def disonnect():
+	global sock
+	enable_component( hostname_label )
+	enable_component( hostname_entry )
+
+	enable_component( portnum_label )
+	enable_component( portnum_entry )
+
+	enable_component( username_label )
+	enable_component( username_entry )
+
+	enable_component( connect_btn )
+
+	chat_frame.pack_forget()
+	tabs.forget( chat_frame )
+
+	info.set("To connect, write the host address & port number")
+	srvMsg_label.set("Button working but the may not have conected to server")
+
+	sock.shutdown( socket.SHUT_RDWR )
+	sock.close()
+	sock = None
+
+	messagebox.showinfo("Disconnected","Connection to the server is closed")
+# ------------------------------------------------------------------------------------------------------------------
+def connect_btn_clicked():
+	disable_component( hostname_label )
+	disable_component( hostname_entry )
+
+	disable_component( portnum_label )
+	disable_component( portnum_entry )
+
+	disable_component( username_label )
+	disable_component( username_entry )
+	disable_component( connect_btn )
+
+	tabs.add( chat_frame , text="Server Connection" )
+	host = hostname.get()
+	port = portnum.get()
+	user = username.get()
+
+	def create_tcp_client(  HOST , PORT , name ):
+		global sock
+
+		if sock == None:
+			sock = socket.socket( socket.AF_INET , socket.SOCK_STREAM  )
+		try:
+			sock.connect( ( HOST , int(PORT) ) )
+		except socket.error as se:
+			print(f"Problem connecting:\n{se}")
+			messagebox.showerror("Socket Error" , f"{se}")
+			sys.exit(1)
+
+		try:
+			sock.send( bytes( str(name).encode("utf-8") ) ) # first thing we send is the name of the client, so when we send our messages we know who sent it
+			info.set(f"You are connected to host:{HOST} @ port:{PORT}")
+
+			while True:
+				srvmsg = sock.recv(2048).decode("utf-8")
+				print(f"{srvmsg}\n")
+				ta.insert( END , f"{srvmsg}\n" )
+
+		except KeyboardInterrupt:
+			print("====================\nForcebly stopped by user\n====================\n")
+			sock.close()
+		finally:
+			sock.close()
+			root.quit()
+			print("Connection closed")
+
+
+	thrd = threading.Thread( target = create_tcp_client , args=( host , port , user )  )
+	thrd.start()
+# ------------------------------------------------------------------------------------------------------------------
+def stylize( msg ):
+	if msg == "-breeze":
+		default_style = "breeze"
+		style.theme_use( default_style )
+		messagebox.showinfo("Information",f"Style was successfully changed  to {default_style}")
+	
+	elif msg == "-equilux":
+		default_style = "equilux"
+		style.theme_use( default_style )
+		messagebox.showinfo("Information",f"Style was successfully changed  to {default_style}")
+	
+	elif msg == "-blue":
+		default_style = "blue"
+		style.theme_use( default_style )
+		messagebox.showinfo("Information",f"Style was successfully changed  to {default_style}")
+	
+	elif msg == "-black":
+		default_style = "black"
+		style.theme_use( default_style )
+		messagebox.showinfo("Information",f"Style was successfully changed  to {default_style}")
+		
+	elif msg == "-arc":
+		default_style = "arc"
+		style.theme_use( default_style )
+		messagebox.showinfo("Information",f"Style was successfully changed  to {default_style}")
+	
+	elif msg == "-help":
+		ta.insert( END ,"Client:: [style] -help\n\tThemes: -breeze, -equilux, -blue, -black, -arc\n")
+# ------------------------------------------------------------------------------------------------------------------
+def send( event = None ):
+	global style
+	msg = message.get()
+	message.set("")
+	cmd = msg.split(" ")
+	sock.send( bytes( msg.encode("utf-8") ) )
+	
+	if cmd[0] == "[exit]":
+		disonnect()
+	
+	elif cmd[0] == "[clear]":
+		ta.delete( 0.0 , END )
+	
+	elif cmd[0] == "[style]":
+		if len(cmd) == 1:
+			ta.insert( END ,"Client:: [style] takes an argument\n")
+		elif len(cmd) == 2:
+			stylize( cmd[1] )
+# ------------------------------------------------------------------------------------------------------------------
+if __name__ == "__main__":
+
+	sock = socket.socket( socket.AF_INET , socket.SOCK_STREAM  )
+
+	root = ThemedTk()
+	
+	style = ttk.Style()
+	style.theme_use( default_style )
+	
+	root.title("Client")
+	root.geometry( str(WIDTH) +"x"+ str(HEIGHT) )
+
+	tabs = ttk.Notebook( root , width=WIDTH , height=HEIGHT )
+
+	main_frame = ttk.Frame( tabs , width=WIDTH , height=HEIGHT )
+	main_frame.pack()
+
+	# Frame 2
+	chat_frame = ttk.Frame( tabs , width=WIDTH , height=HEIGHT )
+	chat_frame.configure( padding="10 10 10 10" )
+	srvMsg_label = tk.StringVar()
+	srvMsg_label.set("Working")
+
+	lbl = ttk.Label( chat_frame , textvariable=srvMsg_label )
+	lbl.pack( pady=30 )
+
+	ta = st.ScrolledText( chat_frame , width=120 , height=30 , wrap=tk.WORD , font = "FiraCodeMedium 9" , bg="#141d26" , fg="white" )
+	ta.place( x=0 , y=0 )
+
+	message = tk.StringVar()
+	message_entry = ttk.Entry( chat_frame , textvariable = message , width=120 )
+	message_entry.place( x=0 , y=470 )
+	
+	send_btn_photo = PhotoImage( file="./send.png" )
+	send_btn = ttk.Button( chat_frame, image=send_btn_photo, command=send )
+	send_btn.place( x=870 , y=460)
+
+	stop_btn_photo = PhotoImage( file="./disconnect.png" )
+	stop_btn = ttk.Button( chat_frame, image=stop_btn_photo, command=disonnect)
+	stop_btn.place( x=870 , y=0 )
+	# end of frame 2
+
+	hostname = tk.StringVar()
+	hostname_label = ttk.Label( main_frame , text = "\n\nHostname" ) ; hostname_label.pack()
+	hostname_entry = ttk.Entry( main_frame , textvariable = hostname , width = 40 ) ; hostname_entry.pack()
+
+	portnum = tk.StringVar()
+	portnum_label = ttk.Label( main_frame , text = "\nPort number" ) ; portnum_label.pack()
+	portnum_entry = ttk.Entry( main_frame , textvariable = portnum , width = 40 ) ; portnum_entry.pack()
+
+	username = tk.StringVar()
+	username_label = ttk.Label( main_frame , text = "\nUsername" ) ; username_label.pack()
+	username_entry = ttk.Entry( main_frame , textvariable = username , width = 40 ) ; username_entry.pack()
+	
+	if len(sys.argv) == 4: # if the user enters info from the terminal directly
+		hostname.set( sys.argv[1] )
+		portnum.set( sys.argv[2] )
+		username.set( sys.argv[3] )
+		
+	connect_btn_photo = PhotoImage( file="./connection.png" )
+	connect_btn = ttk.Button( main_frame, text="", image=connect_btn_photo, width=38, command=connect_btn_clicked, compound=TOP )
+	connect_btn.pack( pady = 15 )
+
+	info = tk.StringVar()
+	info.set("To connect, write the host address & port number")
+	info_label = ttk.Label( main_frame , textvariable=info )
+	info_label.pack( pady=15 )
+
+	tabs.add( main_frame , text="  Connect  " )
+	tabs.pack()
+
+	root.mainloop()
