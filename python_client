@@ -1,6 +1,7 @@
 #!/bin/python3
 '''
 	<lastEdited="17.03.2020" />
+	<author = "Alixhan Basha">
 	CHANGES
 		[1] Added suport for theme changes
 		[2] Users can now pass connection info derectly from the terminal
