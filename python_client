@@ -6,7 +6,7 @@
 	
 	CHANGES
 		[1] Added suport for theme changes
-		[2] Users can now pass connection info derectly from the terminal
+		[2] Users can now pass connection info directly from the terminal ex: ./python_client "localhost" "65534" "username"
 		[3] Minor changes here & there
 		[4] Made code more readable
 	
