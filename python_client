@@ -1,8 +1,9 @@
 #!/bin/python3
 '''
 	## NOTE: Tested in linux
-	<lastEdited="17.03.2020" />
-	<author = "Alixhan Basha">
+	<lastEdited="2.04.2020" />
+	<author="Alixhan Basha" />
+	
 	CHANGES
 		[1] Added suport for theme changes
 		[2] Users can now pass connection info derectly from the terminal
@@ -13,7 +14,7 @@
 		[1] Make the textbox read-only
 		[2] Beautify the gui
 		[3] Add more server & client commands
-		[4] Fix bugs... caused by [1]
+		[4] Fix bugs
 '''
 import socket
 import sys
@@ -92,13 +93,13 @@ def connect_btn_clicked():
 			sys.exit(1)
 
 		try:
-			sock.send( bytes( str(name).encode("utf-8") ) )
+			sock.send( bytes( str(name).encode("utf-8") ) ) # first thing we send is the name of the client, so when we send our messages we know who sent it
 			info.set(f"You are connected to host:{HOST} @ port:{PORT}")
 
 			while True:
 				srvmsg = sock.recv(2048).decode("utf-8")
 				print(f"{srvmsg}\n")
-				ta.insert('insert' , f"{srvmsg}\n")
+				ta.insert( END , f"{srvmsg}\n" )
 
 		except KeyboardInterrupt:
 			print("====================\nForcebly stopped by user\n====================\n")
@@ -139,7 +140,7 @@ def stylize( msg ):
 		messagebox.showinfo("Information",f"Style was successfully changed  to {default_style}")
 	
 	elif msg == "-help":
-		ta.insert('insert',"Client:: [style] -help\n\tThemes: -breeze, -equilux, -blue, -black, -arc\n")
+		ta.insert( END ,"Client:: [style] -help\n\tThemes: -breeze, -equilux, -blue, -black, -arc\n")
 # ------------------------------------------------------------------------------------------------------------------
 def send( event = None ):
 	global style
@@ -156,7 +157,7 @@ def send( event = None ):
 	
 	elif cmd[0] == "[style]":
 		if len(cmd) == 1:
-			ta.insert('insert',"Client:: [style] takes an argument\n")
+			ta.insert( END ,"Client:: [style] takes an argument\n")
 		elif len(cmd) == 2:
 			stylize( cmd[1] )
 # ------------------------------------------------------------------------------------------------------------------
@@ -186,7 +187,7 @@ if __name__ == "__main__":
 	lbl = ttk.Label( chat_frame , textvariable=srvMsg_label )
 	lbl.pack( pady=30 )
 
-	ta = st.ScrolledText( chat_frame , width=120 , height=30 , wrap=tk.WORD , font = "Monospace 9" , bg="#141d26" , fg="white" )
+	ta = st.ScrolledText( chat_frame , width=120 , height=30 , wrap=tk.WORD , font = "FiraCodeMedium 9" , bg="#141d26" , fg="white" )
 	ta.place( x=0 , y=0 )
 
 	message = tk.StringVar()
